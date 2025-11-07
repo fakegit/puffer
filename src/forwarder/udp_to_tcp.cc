@@ -61,10 +61,6 @@ void accept_one_client(TCPSocket & listening_socket, const uint16_t udp_port)
           udp_socket.close();
 
           throw runtime_error("Error: give up forwarding data");
-        } else if (buffer_size > 10 * 1024 * 1024) { // 10 MB
-          cerr << "[" << date_time() << "] "
-               << "port=" << udp_port << ", "
-               << "buffer=" << buffer_size << endl;
         }
       }
 

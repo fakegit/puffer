@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <map>
 
+#include "util.hh"
 #include "strict_conversions.hh"
 #include "socket.hh"
 #include "file_descriptor.hh"
@@ -17,13 +18,15 @@ using namespace PollerShortNames;
 
 static uint16_t global_file_id = 0;  /* intended to wrap around */
 static fs::path tmp_dir_path = fs::temp_directory_path();
+static string allowed_origin = "";  /* empty means allow all */
 
 void print_usage(const string & program_name)
 {
   cerr <<
-  "Usage: " << program_name << " PORT [TMP-DIR]\n\n"
-  "TMP-DIR: directory to save temp file; "
-  "must be unique for each file_receiver process"
+  "Usage: " << program_name << " PORT [TMP-DIR] [ALLOWED-ORIGIN]\n\n"
+  "TMP-DIR: directory to store temporary files"
+  " (must be unique for each file_receiver process)\n"
+  "ALLOWED-ORIGIN: allowed IP to accept TCP connections from"
   << endl;
 }
 
@@ -79,14 +82,20 @@ int main(int argc, char * argv[])
     abort();
   }
 
-  if (argc != 2 and argc != 3) {
+  if (argc < 2 or argc > 4) {
     print_usage(argv[0]);
     return EXIT_FAILURE;
   }
 
   uint16_t port = narrow_cast<uint16_t>(stoi(argv[1]));
-  if (argc == 3) {
+
+  if (argc >= 3) {
     tmp_dir_path = argv[2];
+  }
+
+  if (argc == 4) {
+    allowed_origin = argv[3];
+    cout << "Allowed origin: " << allowed_origin << endl;
   }
 
   TCPSocket listening_socket;
@@ -104,6 +113,16 @@ int main(int argc, char * argv[])
   poller.add_action(Poller::Action(listening_socket, Direction::In,
     [&poller, &listening_socket, &global_client_id, &clients]()->ResultType {
       TCPSocket client_sock = listening_socket.accept();
+
+      /* check allowed origin */
+      if (not allowed_origin.empty()) {
+        string client_ip = client_sock.peer_address().ip();
+        if (client_ip != allowed_origin) {
+          cout << "[" << date_time() << "] Rejected connection from "
+               << client_ip << endl;
+          return ResultType::Continue;
+        }
+      }
 
       /* create a new Client */
       const uint64_t client_id = global_client_id++;

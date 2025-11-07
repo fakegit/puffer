@@ -30,10 +30,16 @@ void print_usage(const string & program_name)
 class Client
 {
 public:
-  Client(TCPSocket && _socket) : socket(move(_socket)), buffer() {}
+  Client(const uint64_t _id, TCPSocket && _socket)
+    : id(_id), socket(move(_socket)), buffer() {}
 
   void write_to_file() const
   {
+    if (buffer.empty()) {
+      cerr << "Warning: no data received from client " << id << endl;
+      return;
+    }
+
     FileMsg metadata(buffer);
     fs::path dst_path = metadata.dst_path;
     fs::path tmp_path = tmp_dir_path / (dst_path.filename().string() + "."
@@ -62,6 +68,7 @@ public:
     cerr << "Received " << tmp_path << " and moved to " << dst_path << endl;
   }
 
+  uint64_t id;
   TCPSocket socket;
   string buffer;
 };
@@ -102,21 +109,22 @@ int main(int argc, char * argv[])
       const uint64_t client_id = global_client_id++;
       clients.emplace(piecewise_construct,
                       forward_as_tuple(client_id),
-                      forward_as_tuple(move(client_sock)));
+                      forward_as_tuple(client_id, move(client_sock)));
 
       /* retrieve a client that doesn't go out of scope */
       Client & client = clients.at(client_id);
 
       poller.add_action(Poller::Action(client.socket, Direction::In,
-        [client_id, &client, &clients]()->ResultType {
+        [&client, &clients]()->ResultType {
           const string & data = client.socket.read();
-          client.buffer.append(data);
 
           if (data.empty()) {  // EOF
             client.write_to_file();
-            clients.erase(client_id);
+            clients.erase(client.id);
             return ResultType::CancelAll;
           }
+
+          client.buffer.append(data);
 
           return ResultType::Continue;
         }

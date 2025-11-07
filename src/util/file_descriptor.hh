@@ -5,6 +5,7 @@
 
 #include <string>
 #include <unistd.h>
+#include <cstdint>
 
 #include "config.h"
 

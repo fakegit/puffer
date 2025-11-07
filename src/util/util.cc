@@ -9,6 +9,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <ctime>
 
 using namespace std;
 

@@ -3,10 +3,11 @@
 #ifndef WS_FRAME_HH
 #define WS_FRAME_HH
 
+#include "chunk.hh"
+
 #include <string>
 #include <optional>
-
-#include "chunk.hh"
+#include <cstdint>
 
 class WSFrame
 {

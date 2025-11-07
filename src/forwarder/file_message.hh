@@ -2,6 +2,7 @@
 #define FILE_MESSAGE_HH
 
 #include <string>
+#include <cstdint>
 
 class FileMsg
 {
